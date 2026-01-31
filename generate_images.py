@@ -53,7 +53,7 @@ def load_prompts(prompts_file: str) -> list[dict]:
 def generate_images_from_prompts(
     prompts_file: str,
     output_dir: str = "data/dataset",
-    start_index: int = 0
+    start_index: int = None
 ):
     """Generate images for all prompts in the file."""
     prompts = load_prompts(prompts_file)
@@ -62,16 +62,21 @@ def generate_images_from_prompts(
     metadata = []
     metadata_file = Path(output_dir) / "metadata.jsonl"
 
-    # Load existing metadata if exists
+    # Load existing metadata if exists (only for auto-resume)
+    prompt_start = 0
     if metadata_file.exists():
         with open(metadata_file, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
                     metadata.append(json.loads(line))
-        start_index = len(metadata)
-        print(f"Resuming from index {start_index}")
+        prompt_start = len(metadata)
+        print(f"Resuming from prompt index {prompt_start}")
 
-    for i, item in enumerate(prompts[start_index:], start=start_index):
+    # Use provided start_index for filenames, or continue from metadata count
+    if start_index is None:
+        start_index = prompt_start
+
+    for i, item in enumerate(prompts[prompt_start:], start=start_index):
         print(f"[{i+1}/{len(prompts)}] Generating image...")
         print(f"  Subject: {item['subject']}")
 
@@ -106,6 +111,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompts_file", type=str, default="data/prompts.jsonl")
     parser.add_argument("--output_dir", type=str, default="data/dataset")
+    parser.add_argument("--start_index", type=int, default=None, help="Starting index for image filenames")
     args = parser.parse_args()
 
-    generate_images_from_prompts(args.prompts_file, args.output_dir)
+    generate_images_from_prompts(args.prompts_file, args.output_dir, args.start_index)

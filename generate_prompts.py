@@ -25,25 +25,29 @@ Fixed suffix (must be last, exact):
 "large, clearly visible pixels, chunky pixel blocks, low resolution look, limited color palette, no smooth gradients, no anti-aliasing, no blur, sharp pixel edges, retro 16-bit game style"
 """
 
-SUBJECT_GENERATOR_PROMPT = """You are a creative subject generator for pixel art images.
+SUBJECT_GENERATOR_PROMPT_BASE = """You are a creative subject generator for pixel art images.
 
 Generate ONE unique Korean subject/keyword for pixel art image generation.
 The subject should be creative, visual, and interesting.
 
 Rules:
 1) Output ONLY the Korean subject, nothing else.
-2) Keep it concise (3-10 words).
+2) Keep it 3-7 words. Vary the length naturally.
 3) Make it visually interesting and suitable for pixel art.
 4) Be creative and diverse - think of scenes, characters, objects, landscapes, etc.
+5) MUST be completely different from any subjects listed below.
+6) The subject MUST make logical sense. Avoid nonsensical or physically impossible combinations.
+   - BAD: "수영하는 경비행기" (airplanes can't swim)
+   - BAD: "마법의 송편 여정" (abstract/nonsensical)
+   - GOOD: "빗속을 걷는 우산 없는 직장인" (realistic scene)
+   - GOOD: "창가에서 책 읽는 고양이" (logical and visual)
 
 Examples of good subjects:
-- 하늘을 나는 고양이
-- 석양을 바라보는 노부부
-- 우주를 여행하는 로봇
-- 마법의 숲속 오두막
+- 잠든 고양이
+- 포장마차에서 라면 먹는 회사원
 - 비오는 날의 네온 도시
-
-Generate a NEW, UNIQUE subject:"""
+- 벚꽃 아래서 도시락 먹는 학생들
+- 오래된 등대를 지키는 외로운 노인"""
 
 
 class PromptGenerator:
@@ -92,13 +96,37 @@ class PromptGenerator:
 
         return max_sim >= self.similarity_threshold, max_sim, most_similar
 
+    def _build_prompt(self, avoid_subjects: list[str] = None) -> str:
+        """Build the subject generation prompt with context."""
+        prompt = SUBJECT_GENERATOR_PROMPT_BASE
+
+        # Add recent 10 subjects to avoid
+        recent_subjects = self.history["subjects"][-10:] if self.history["subjects"] else []
+        if recent_subjects:
+            prompt += "\n\n[최근 생성된 주제들 - 이것들과 다른 주제를 만드세요]:\n"
+            for subj in recent_subjects:
+                prompt += f"- {subj}\n"
+
+        # Add subjects to specifically avoid (from failed attempts)
+        if avoid_subjects:
+            prompt += "\n[너무 비슷해서 거절된 주제들 - 이것들과 완전히 다른 주제를 만드세요]:\n"
+            for subj in avoid_subjects:
+                prompt += f"- {subj}\n"
+
+        prompt += "\nGenerate a NEW, UNIQUE subject:"
+        return prompt
+
     def generate_subject(self, max_retries: int = 5) -> str:
         """Generate a unique Korean subject using GPT with embedding similarity check."""
+        avoid_subjects = []  # Track subjects that were too similar
+
         for attempt in range(max_retries):
+            prompt = self._build_prompt(avoid_subjects if avoid_subjects else None)
+
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "user", "content": SUBJECT_GENERATOR_PROMPT}
+                    {"role": "user", "content": prompt}
                 ],
                 temperature=1.0,
                 max_tokens=100
@@ -117,6 +145,8 @@ class PromptGenerator:
                 return subject
             else:
                 print(f"  Retry {attempt+1}: '{subject}' too similar to '{similar_to}' ({similarity:.2f})")
+                avoid_subjects.append(f"{subject} ('{similar_to}'와 유사)")
+                avoid_subjects = avoid_subjects[-2:]  # Keep only last 2 rejected subjects
 
         # If all retries failed, use the last one anyway
         print(f"  Warning: Using subject despite similarity after {max_retries} retries")

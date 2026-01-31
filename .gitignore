@@ -1,0 +1,26 @@
+# Environment variables (API keys)
+.env
+
+# Generated data
+data/
+subjects_history.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Archives
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
