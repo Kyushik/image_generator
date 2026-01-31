@@ -1,0 +1,9 @@
+openai>=1.12.0
+huggingface_hub>=0.20.0
+diffusers>=0.25.0
+torch>=2.0.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+accelerate>=0.25.0
+transformers>=4.36.0
+numpy>=1.24.0
