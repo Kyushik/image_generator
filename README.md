@@ -1,4 +1,4 @@
-# Pixel Art Image Generator
+# Pixel Art Image Data Generator
 
 GPT와 Z-Image-Turbo 모델을 활용한 픽셀아트 이미지 생성 파이프라인입니다.
 
